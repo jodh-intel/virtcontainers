@@ -61,6 +61,7 @@ func newTestPodConfigNoop() PodConfig {
 	}
 
 	podConfig := PodConfig{
+		ID:               testPodID,
 		HypervisorType:   MockHypervisor,
 		HypervisorConfig: hypervisorConfig,
 
@@ -96,6 +97,7 @@ func newTestPodConfigHyperstartAgent() PodConfig {
 	}
 
 	podConfig := PodConfig{
+		ID:               testPodID,
 		HypervisorType:   MockHypervisor,
 		HypervisorConfig: hypervisorConfig,
 
@@ -136,6 +138,7 @@ func newTestPodConfigHyperstartAgentCNINetwork() PodConfig {
 	}
 
 	podConfig := PodConfig{
+		ID:               testPodID,
 		HypervisorType:   MockHypervisor,
 		HypervisorConfig: hypervisorConfig,
 
@@ -1228,6 +1231,7 @@ func createNewPodConfig(hType HypervisorType, aType AgentType, aConfig interface
 	}
 
 	return PodConfig{
+		ID:               testPodID,
 		HypervisorType:   hType,
 		HypervisorConfig: hypervisorConfig,
 
