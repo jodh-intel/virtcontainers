@@ -149,17 +149,20 @@ func (fs *filesystem) createAllResources(pod Pod) (err error) {
 }
 
 func (fs *filesystem) storeFile(file string, data interface{}) error {
+	fmt.Printf("DEBUG: storeFile: file=%v, data=%v\n", file, data)
 	if file == "" {
 		return ErrNeedFile
 	}
 
 	f, err := os.Create(file)
+	fmt.Printf("DEBUG: storeFile: os.Create: f=%v, err=%v\n", f, err)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
 	jsonOut, err := json.Marshal(data)
+	fmt.Printf("DEBUG: storeFile: json.Marshal: jsonOut=%v, err=%v\n", jsonOut, err)
 	if err != nil {
 		return fmt.Errorf("Could not marshall data: %s", err)
 	}
@@ -169,16 +172,19 @@ func (fs *filesystem) storeFile(file string, data interface{}) error {
 }
 
 func (fs *filesystem) fetchFile(file string, data interface{}) error {
+	fmt.Printf("DEBUG: fetchFile: file=%v, data=%v\n", file, data)
 	if file == "" {
 		return ErrNeedFile
 	}
 
 	fileData, err := ioutil.ReadFile(file)
+	fmt.Printf("DEBUG: fetchFile: ioutil.ReadFile(file=%v), fileData=%v, err=%v\n", file, fileData, err)
 	if err != nil {
 		return err
 	}
 
 	err = json.Unmarshal([]byte(string(fileData)), data)
+	fmt.Printf("DEBUG: fetchFile: json.Unmarshal err=%v\n", err)
 	if err != nil {
 		return err
 	}
@@ -195,9 +201,11 @@ func resourceNeedsContainerID(podSpecific bool, resource podResource) bool {
 
 	switch resource {
 	case lockFileType, networkFileType:
+		fmt.Printf("DEBUG: resourceNeedsContainerID: lockFileType/networkFileType - returning false\n")
 		// pod-specific resources
 		return false
 	default:
+		fmt.Printf("DEBUG: resourceNeedsContainerID: returning %v\n", !podSpecific)
 		return !podSpecific
 	}
 }
@@ -234,6 +242,7 @@ func resourceDir(podSpecific bool, podID, containerID string, resource podResour
 // Note that this function defers determining if containerID can be
 // blank to resourceDIR()
 func (fs *filesystem) resourceURI(podSpecific bool, podID, containerID string, resource podResource) (string, string, error) {
+	fmt.Printf("DEBUG: resourceURI: podSpecific=%v, podID=%v, containerID=%v, resource=%v\n", podSpecific, podID, containerID, resource)
 	if podID == "" {
 		return "", "", ErrNeedPodID
 	}
@@ -241,6 +250,7 @@ func (fs *filesystem) resourceURI(podSpecific bool, podID, containerID string, r
 	var filename string
 
 	dirPath, err := resourceDir(podSpecific, podID, containerID, resource)
+	fmt.Printf("DEBUG: resourceURI: dirPath=%v, err=%v\n", dirPath, err)
 	if err != nil {
 		return "", "", err
 	}
@@ -262,7 +272,10 @@ func (fs *filesystem) resourceURI(podSpecific bool, podID, containerID string, r
 		return "", "", fmt.Errorf("Invalid pod resource")
 	}
 
+	fmt.Printf("DEBUG: resourceURI: filename=%v\n", filename)
+
 	filePath := filepath.Join(dirPath, filename)
+	fmt.Printf("DEBUG: resourceURI: filePath=%v\n", filePath)
 
 	return filePath, dirPath, nil
 }
@@ -286,11 +299,14 @@ func (fs *filesystem) podURI(podID string, resource podResource) (string, string
 // commonResourceChecks performs basic checks common to both setting and
 // getting a podResource.
 func (fs *filesystem) commonResourceChecks(podSpecific bool, podID, containerID string, resource podResource) error {
+	fmt.Printf("DEBUG: commonResourceChecks: podSpecific=%v, podID=%v, containerID=%v, resource=%v\n", podSpecific, podID, containerID, resource)
 	if podID == "" {
+		fmt.Printf("DEBUG: commonResourceChecks: podID not set, so returning err=%v\n", ErrNeedPodID)
 		return ErrNeedPodID
 	}
 
 	if resourceNeedsContainerID(podSpecific, resource) == true && containerID == "" {
+		fmt.Printf("DEBUG: commonResourceChecks: containerID not set, so returning err=%v\n", ErrNeedContainerID)
 		return ErrNeedContainerID
 	}
 
@@ -298,7 +314,10 @@ func (fs *filesystem) commonResourceChecks(podSpecific bool, podID, containerID 
 }
 
 func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string, resource podResource, data interface{}) error {
+	fmt.Printf("DEBUG: storeResource: podSpecific=%v, podID=%v, containerID=%v, resource=%v, data=%v\n", podSpecific, podID, containerID, resource, data)
+
 	if err := fs.commonResourceChecks(podSpecific, podID, containerID, resource); err != nil {
+		fmt.Printf("DEBUG: storeResource: fs.commonResourceChecks err=%v\n", err)
 		return err
 	}
 
@@ -309,6 +328,7 @@ func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string,
 		}
 
 		configFile, _, err := fs.resourceURI(podSpecific, podID, containerID, configFileType)
+		fmt.Printf("DEBUG: storeResource: fs.resourceURI: configFile=%v, err=%v\n", configFile, err)
 		if err != nil {
 			return err
 		}
@@ -321,6 +341,7 @@ func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string,
 		}
 
 		stateFile, _, err := fs.resourceURI(podSpecific, podID, containerID, stateFileType)
+		fmt.Printf("DEBUG: storeResource: fs.resourceURI: stateFile=%v, err=%v\n", stateFile, err)
 		if err != nil {
 			return err
 		}
@@ -334,6 +355,7 @@ func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string,
 
 		// pod only resource
 		networkFile, _, err := fs.resourceURI(true, podID, containerID, networkFileType)
+		fmt.Printf("DEBUG: storeResource: fs.resourceURI: networkFile=%v, err=%v\n", networkFile, err)
 		if err != nil {
 			return err
 		}
@@ -346,6 +368,7 @@ func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string,
 		}
 
 		processFile, _, err := fs.resourceURI(podSpecific, podID, containerID, processFileType)
+		fmt.Printf("DEBUG: storeResource: fs.resourceURI: processFile=%v, err=%v\n", processFile, err)
 		if err != nil {
 			return err
 		}
@@ -358,11 +381,15 @@ func (fs *filesystem) storeResource(podSpecific bool, podID, containerID string,
 }
 
 func (fs *filesystem) fetchResource(podSpecific bool, podID, containerID string, resource podResource) (interface{}, error) {
+	fmt.Printf("DEBUG: fetchResource: podSpecific=%v, podID=%v, containerID=%v, resource=%v\n", podSpecific, podID, containerID, resource)
+
 	if err := fs.commonResourceChecks(podSpecific, podID, containerID, resource); err != nil {
+		fmt.Printf("DEBUG: fetchResource: fs.commonResourceChecks returned err=%v\n", err)
 		return nil, err
 	}
 
 	path, _, err := fs.resourceURI(podSpecific, podID, containerID, resource)
+	fmt.Printf("DEBUG: fetchResource: path=%v, err=%v\n", path, err)
 	if err != nil {
 		return nil, err
 	}
@@ -376,42 +403,51 @@ func (fs *filesystem) fetchResource(podSpecific bool, podID, containerID string,
 				return nil, err
 			}
 
+			fmt.Printf("DEBUG: fetchResource: blank containerID so returning config=%+v\n", config)
 			return config, nil
 		}
 
 		config := ContainerConfig{}
 		err = fs.fetchFile(path, &config)
+		fmt.Printf("DEBUG: fetchResource: fs.fetchFile(path=%v, config=%v) returned err=%+v\n", path, config, err)
 		if err != nil {
 			return nil, err
 		}
 
+		fmt.Printf("DEBUG: fetchResource: default returning config=%+v\n", config)
 		return config, nil
 
 	case stateFileType:
 		state := State{}
 		err = fs.fetchFile(path, &state)
+		fmt.Printf("DEBUG: fetchResource: fs.fetchFile(path=%v, state=%+v) returned err=%v\n", path, state, err)
 		if err != nil {
 			return nil, err
 		}
 
+		fmt.Printf("DEBUG: fetchResource: returning default state %v\n", state)
 		return state, nil
 
 	case networkFileType:
 		networkNS := NetworkNamespace{}
 		err = fs.fetchFile(path, &networkNS)
+		fmt.Printf("DEBUG: fetchResource: fs.fetchFile(path=%v, networkNS=%v) returned err=%v\n", path, networkNS, err)
 		if err != nil {
 			return nil, err
 		}
 
+		fmt.Printf("DEBUG: fetchResource: returning default networkNS=%v\n", networkNS)
 		return networkNS, nil
 
 	case processFileType:
 		process := Process{}
 		err = fs.fetchFile(path, &process)
+		fmt.Printf("DEBUG: fetchResource: fs.fetchFile(path=%v, process=%v) returned err=%v\n", path, process, err)
 		if err != nil {
 			return nil, err
 		}
 
+		fmt.Printf("DEBUG: fetchResource: returning default process %v\n", process)
 		return process, nil
 	}
 
@@ -438,12 +474,14 @@ func (fs *filesystem) fetchPodConfig(podID string) (PodConfig, error) {
 
 func (fs *filesystem) fetchPodState(podID string) (State, error) {
 	data, err := fs.fetchResource(true, podID, "", stateFileType)
+	fmt.Printf("DEBUG: fetchPodState: data=%v, err=%v\n", data, err)
 	if err != nil {
 		return State{}, err
 	}
 
 	switch state := data.(type) {
 	case State:
+		fmt.Printf("DEBUG: fetchPodState: returning state=%+v\n", state)
 		return state, nil
 	}
 

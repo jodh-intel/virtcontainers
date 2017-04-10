@@ -69,6 +69,7 @@ func (state *State) valid() bool {
 // validTransition returns an error if we want to move to
 // an unreachable state.
 func (state *State) validTransition(oldState stateString, newState stateString) error {
+	fmt.Printf("DEBUG: validTransition: oldState=%v, newState=%v (state=%+v)\n", oldState, newState, state)
 	if state.State != oldState {
 		return fmt.Errorf("Invalid state %s (Expecting %s)", state.State, oldState)
 	}
@@ -387,11 +388,13 @@ func (p *Pod) GetContainers() []*Container {
 
 func (p *Pod) createSetStates() error {
 	err := p.setPodState(StateReady)
+	fmt.Printf("DEBUG: createSetStates: p.setPodState(StateReady) err=%+v\n", err)
 	if err != nil {
 		return err
 	}
 
 	err = p.setContainersState(StateReady)
+	fmt.Printf("DEBUG: createSetStates: p.setContainersState(StateReady) err=%+v\n", err)
 	if err != nil {
 		return err
 	}
@@ -405,23 +408,29 @@ func (p *Pod) createSetStates() error {
 // to physically create that pod i.e. starts a VM for that pod to eventually
 // be started.
 func createPod(podConfig PodConfig) (*Pod, error) {
+	fmt.Printf("DEBUG: createPod: podConfig=%+v\n", podConfig)
+
 	if podConfig.valid() == false {
 		return nil, fmt.Errorf("Invalid pod configuration")
 	}
 
 	agent := newAgent(podConfig.AgentType)
+	fmt.Printf("DEBUG: createPod: agent=%v\n", agent)
 
 	hypervisor, err := newHypervisor(podConfig.HypervisorType)
+	fmt.Printf("DEBUG: createPod: hypervisor=%v, err=%v\n", hypervisor, err)
 	if err != nil {
 		return nil, err
 	}
 
 	err = hypervisor.init(podConfig.HypervisorConfig)
+	fmt.Printf("DEBUG: createPod: hypervisor.init err=%v\n", err)
 	if err != nil {
 		return nil, err
 	}
 
 	network := newNetwork(podConfig.NetworkModel)
+	fmt.Printf("DEBUG: createPod: network=%v\n", network)
 
 	p := &Pod{
 		id:         podConfig.ID,
@@ -436,7 +445,11 @@ func createPod(podConfig PodConfig) (*Pod, error) {
 		state:      State{},
 	}
 
+	// FIXME: here, state={} (CORRECT!)
+	fmt.Printf("DEBUG: createPod: p=%+v\n", p)
+
 	containers, err := createContainers(p, podConfig.Containers)
+	fmt.Printf("DEBUG: createPod: containers=%+v, err=%v\n", containers, err)
 	if err != nil {
 		return nil, err
 	}
@@ -444,11 +457,13 @@ func createPod(podConfig PodConfig) (*Pod, error) {
 	p.containers = containers
 
 	err = p.storage.createAllResources(*p)
+	fmt.Printf("DEBUG: createPod: p.storage.createAllResources err=%v\n", err)
 	if err != nil {
 		return nil, err
 	}
 
 	err = p.hypervisor.createPod(podConfig)
+	fmt.Printf("DEBUG: createPod: p.hypervisor.createPod err=%v\n", err)
 	if err != nil {
 		p.storage.deletePodResources(p.id, nil)
 		return nil, err
@@ -467,19 +482,25 @@ func createPod(podConfig PodConfig) (*Pod, error) {
 		agentConfig = nil
 	}
 
+	fmt.Printf("DEBUG: createPod: agentConfig=%+v\n", agentConfig)
+
 	err = p.agent.init(p, agentConfig)
+	fmt.Printf("DEBUG: createPod: p.agent.init err=%v\n", err)
 	if err != nil {
 		p.storage.deletePodResources(p.id, nil)
 		return nil, err
 	}
 
 	state, err := p.storage.fetchPodState(p.id)
+	// FIXME: at this point, state="running"!
+	fmt.Printf("DEBUG: createPod: p.id=%v, state=%v, err=%v\n", p.id, state, err)
 	if err == nil && state.State != "" {
 		p.state = state
 		return p, nil
 	}
 
 	err = p.createSetStates()
+	fmt.Printf("DEBUG: createPod: p.createSetStates err=%v\n", err)
 	if err != nil {
 		p.storage.deletePodResources(p.id, nil)
 		return nil, err
@@ -526,6 +547,7 @@ func fetchPod(podID string) (*Pod, error) {
 // The VM in which the pod is running will be shut down.
 func (p *Pod) delete() error {
 	state, err := p.storage.fetchPodState(p.id)
+	fmt.Printf("DEBUG: Pod.delete: p.storage.fetchPodState: state=%v, err=%v\n", state, err)
 	if err != nil {
 		return err
 	}
@@ -535,6 +557,7 @@ func (p *Pod) delete() error {
 	}
 
 	err = p.storage.deletePodResources(p.id, nil)
+	fmt.Printf("DEBUG: Pod.delete: p.storage.deletePodResources(p.id=%v) err=%v\n", p.id, err)
 	if err != nil {
 		return err
 	}
@@ -544,21 +567,26 @@ func (p *Pod) delete() error {
 
 func (p *Pod) startCheckStates() error {
 	state, err := p.storage.fetchPodState(p.id)
+	fmt.Printf("DEBUG: startCheckStates: p.id=%v, p.storage.fetchPodState state=%v, err=%v\n", p.id, state, err)
 	if err != nil {
 		return err
 	}
 
 	err = state.validTransition(StateReady, StateRunning)
+	fmt.Printf("DEBUG: startCheckStates: state.validTransition(StateReady, StateRunning) err=%v\n", err)
 	if err != nil {
 		err = state.validTransition(StateStopped, StateRunning)
+		fmt.Printf("DEBUG: startCheckStates: state.validTransition(StateStopped, StateRunning) err=%v\n", err)
 		if err != nil {
 			return err
 		}
 	}
 
 	err = p.checkContainersState(StateReady)
+	fmt.Printf("DEBUG: startCheckStates: p.checkContainersState(StateReady) err=%v\n", err)
 	if err != nil {
 		err = p.checkContainersState(StateStopped)
+		fmt.Printf("DEBUG: startCheckStates: p.checkContainersState(StateStopped) err=%v\n", err)
 		if err != nil {
 			return err
 		}
@@ -617,17 +645,20 @@ func (p *Pod) startVM() error {
 // will be started.
 func (p *Pod) start() error {
 	err := p.startCheckStates()
+	fmt.Printf("DEBUG: Pod.start: p.startCheckStates: err=%v\n", err)
 	if err != nil {
 		return err
 	}
 
 	err = p.agent.startPod(*p)
+	fmt.Printf("DEBUG: Pod.start: p.agent.startPod: err=%v\n", err)
 	if err != nil {
 		p.stop()
 		return err
 	}
 
 	err = p.startSetStates()
+	fmt.Printf("DEBUG: Pod.start: p.startSetStates: err=%v\n", err)
 	if err != nil {
 		return err
 	}

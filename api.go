@@ -17,6 +17,7 @@
 package virtcontainers
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 
@@ -33,14 +34,18 @@ func SetLog(logger *logrus.Logger) {
 // CreatePod is the virtcontainers pod creation entry point.
 // CreatePod creates a pod and its containers. It does not start them.
 func CreatePod(podConfig PodConfig) (*Pod, error) {
+	fmt.Printf("DEBUG: CreatePod: podConfig=%v\n", podConfig)
+
 	// Create the pod.
 	p, err := createPod(podConfig)
+	fmt.Printf("DEBUG: CreatePod: createPod: p=%v, err=%v\n", p, err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Store it.
 	err = p.storePod()
+	fmt.Printf("DEBUG: CreatePod: p.storePod: p=%v, err=%v\n", p, err)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +146,8 @@ func DeletePod(podID string) (*Pod, error) {
 // pod and all its containers.
 // It returns the pod ID.
 func StartPod(podID string) (*Pod, error) {
+	fmt.Printf("DEBUG: StartPod: podID=%v\n", podID)
+
 	if podID == "" {
 		return nil, ErrNeedPodID
 	}
@@ -153,18 +160,21 @@ func StartPod(podID string) (*Pod, error) {
 
 	// Fetch the pod from storage and create it.
 	p, err := fetchPod(podID)
+	fmt.Printf("DEBUG: StartPod: fetchPod: p=%v, err=%v\n", p, err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch the network config
 	networkNS, err := p.storage.fetchPodNetwork(podID)
+	fmt.Printf("DEBUG: StartPod: networkNS=%v, err=%v\n", networkNS, err)
 	if err != nil {
 		return nil, err
 	}
 
 	// Start it
 	err = p.start()
+	fmt.Printf("DEBUG: StartPod: p.start() returned err=%v\n", err)
 	if err != nil {
 		return nil, err
 	}
@@ -173,11 +183,13 @@ func StartPod(podID string) (*Pod, error) {
 	err = p.network.run(networkNS.NetNsPath, func() error {
 		return p.config.Hooks.postStartHooks()
 	})
+	fmt.Printf("DEBUG: StartPod: p.network.run() returned err=%v\n", err)
 	if err != nil {
 		return nil, err
 	}
 
 	err = p.endSession()
+	fmt.Printf("DEBUG: StartPod: p.endSession() returned err=%v\n", err)
 	if err != nil {
 		return nil, err
 	}

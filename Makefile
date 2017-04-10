@@ -1,6 +1,6 @@
 all: binaries
-	go build $(go list ./... | grep -v /vendor/)
-	cd hack/virtc && go build
+	go build -gcflags "-N -l" $(go list ./... | grep -v /vendor/)
+	cd hack/virtc && go build -gcflags "-N -l"
 
 pause:
 	make -C $@
