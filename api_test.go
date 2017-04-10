@@ -26,6 +26,7 @@ import (
 
 const (
 	testHyperstartPauseBinName = "pause"
+	containerID                = "1"
 )
 
 func newBasicTestCmd() Cmd {
@@ -48,7 +49,7 @@ func newBasicTestCmd() Cmd {
 func newTestPodConfigNoop() PodConfig {
 	// Define the container command and bundle.
 	container := ContainerConfig{
-		ID:     "1",
+		ID:     containerID,
 		RootFs: filepath.Join(testDir, testBundle),
 		Cmd:    newBasicTestCmd(),
 	}
@@ -76,7 +77,7 @@ func newTestPodConfigNoop() PodConfig {
 func newTestPodConfigHyperstartAgent() PodConfig {
 	// Define the container command and bundle.
 	container := ContainerConfig{
-		ID:     "1",
+		ID:     containerID,
 		RootFs: filepath.Join(testDir, testBundle),
 		Cmd:    newBasicTestCmd(),
 	}
@@ -113,7 +114,7 @@ func newTestPodConfigHyperstartAgent() PodConfig {
 func newTestPodConfigHyperstartAgentCNINetwork() PodConfig {
 	// Define the container command and bundle.
 	container := ContainerConfig{
-		ID:     "1",
+		ID:     containerID,
 		RootFs: filepath.Join(testDir, testBundle),
 		Cmd:    newBasicTestCmd(),
 	}
