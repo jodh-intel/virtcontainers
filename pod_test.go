@@ -94,8 +94,8 @@ func TestCreatePodEmtpyID(t *testing.T) {
 	hConfig := newHypervisorConfig(nil, nil)
 
 	p, err := testCreatePod(t, "", MockHypervisor, hConfig, NoopAgentType, NoopNetworkModel, NetworkConfig{}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("Expected pod with empty ID to fail, but got pod %v", p)
 	}
 
 	t.Logf("Got new ID %s", p.id)
