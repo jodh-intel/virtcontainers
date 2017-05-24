@@ -577,6 +577,65 @@ func StopContainer(podID, containerID string) (*Container, error) {
 	return c, nil
 }
 
+func togglePausePod(podID string, pause bool) (*Pod, error) {
+	if podID == "" {
+		return nil, errNeedPod
+	}
+
+	lockFile, err := lockPod(podID)
+	if err != nil {
+		return nil, err
+	}
+	defer unlockPod(lockFile)
+
+	// Fetch the pod from storage and create it.
+	p, err := fetchPod(podID)
+	if err != nil {
+		return nil, err
+	}
+
+	if pause {
+		err = p.pause()
+	} else {
+		err = p.resume()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.endSession()
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+// PausePod is the virtcontainers container pausing entry point.
+// PausePod pauses an already running pod.
+func PausePod(podID string) (*Pod, error) {
+	return togglePausePod(podID, true)
+}
+
+// ResumePod is the virtcontainers container resuming entry point.
+// ResumePod resumes or unpauses an already paused pod.
+func ResumePod(podID string) (*Pod, error) {
+	return togglePausePod(podID, false)
+}
+
+// PauseContainer is the virtcontainers container pausing entry point.
+// PauseContainer pauses an already running container.
+func PauseContainer(podID, containerID string) (*Container, error) {
+	return killOrTogglePauseContainer(podID, containerID, 0, false, false, false)
+}
+
+// ResumeContainer is the virtcontainers container resuming entry point.
+// ResumeContainer resumes or unpauses an already paused container.
+func ResumeContainer(podID, containerID string) (*Container, error) {
+	return killOrTogglePauseContainer(podID, containerID, 0, false, false, true)
+}
+
 // EnterContainer is the virtcontainers container command execution entry point.
 // EnterContainer enters an already running container and runs a given command.
 func EnterContainer(podID, containerID string, cmd Cmd) (*Pod, *Container, *Process, error) {
@@ -660,41 +719,55 @@ func statusContainer(pod *Pod, containerID string) (ContainerStatus, error) {
 // to a container running inside a pod. If all is true, all processes in
 // the container will be sent the signal.
 func KillContainer(podID, containerID string, signal syscall.Signal, all bool) error {
+	_, err := killOrTogglePauseContainer(podID, containerID, signal, all, true, false)
+	return err
+}
+
+func killOrTogglePauseContainer(podID, containerID string, signal syscall.Signal, all bool, kill, resume bool) (*Container, error) {
 	if podID == "" {
-		return errNeedPodID
+		return nil, errNeedPodID
 	}
 
 	if containerID == "" {
-		return errNeedContainerID
+		return nil, errNeedContainerID
 	}
 
 	lockFile, err := lockPod(podID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer unlockPod(lockFile)
 
 	p, err := fetchPod(podID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Fetch the container.
 	c, err := fetchContainer(p, containerID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Send a signal to the process.
-	err = c.kill(signal, all)
+	if kill {
+		err = c.kill(signal, all)
+	} else {
+		if resume {
+			err = c.resume()
+		} else {
+			err = c.pause()
+		}
+	}
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = p.endSession()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return c, nil
 }

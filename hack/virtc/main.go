@@ -459,6 +459,28 @@ func stopPod(context *cli.Context) error {
 	return nil
 }
 
+func pausePod(context *cli.Context) error {
+	p, err := vc.PausePod(context.String("id"))
+	if err != nil {
+		return fmt.Errorf("Could not pause pod: %s", err)
+	}
+
+	fmt.Printf("Pod %s paused\n", p.ID())
+
+	return nil
+}
+
+func resumePod(context *cli.Context) error {
+	p, err := vc.ResumePod(context.String("id"))
+	if err != nil {
+		return fmt.Errorf("Could not resume pod: %s", err)
+	}
+
+	fmt.Printf("Pod %s resumed\n", p.ID())
+
+	return nil
+}
+
 func listPods(context *cli.Context) error {
 	podStatusList, err := vc.ListPod()
 	if err != nil {
@@ -587,6 +609,36 @@ var statusPodCommand = cli.Command{
 	},
 }
 
+var pausePodCommand = cli.Command{
+	Name:  "pause",
+	Usage: "pause an existing pod",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "id",
+			Value: "",
+			Usage: "the pod identifier",
+		},
+	},
+	Action: func(context *cli.Context) error {
+		return checkPodArgs(context, pausePod)
+	},
+}
+
+var resumePodCommand = cli.Command{
+	Name:  "resume",
+	Usage: "unpause a paused pod",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "id",
+			Value: "",
+			Usage: "the pod identifier",
+		},
+	},
+	Action: func(context *cli.Context) error {
+		return checkPodArgs(context, resumePod)
+	},
+}
+
 func createContainer(context *cli.Context) error {
 	console := context.String("console")
 
@@ -661,6 +713,28 @@ func stopContainer(context *cli.Context) error {
 	}
 
 	fmt.Printf("Container %s stopped\n", c.ID())
+
+	return nil
+}
+
+func pauseContainer(context *cli.Context) error {
+	c, err := vc.PauseContainer(context.String("pod-id"), context.String("id"))
+	if err != nil {
+		return fmt.Errorf("Could not pause container: %s", err)
+	}
+
+	fmt.Printf("Container %s paused\n", c.ID())
+
+	return nil
+}
+
+func resumeContainer(context *cli.Context) error {
+	c, err := vc.ResumeContainer(context.String("pod-id"), context.String("id"))
+	if err != nil {
+		return fmt.Errorf("Could not resume container: %s", err)
+	}
+
+	fmt.Printf("Container %s resumed\n", c.ID())
 
 	return nil
 }
@@ -808,6 +882,46 @@ var stopContainerCommand = cli.Command{
 	},
 }
 
+var pauseContainerCommand = cli.Command{
+	Name:  "pause",
+	Usage: "pause an existing container",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "id",
+			Value: "",
+			Usage: "the container identifier",
+		},
+		cli.StringFlag{
+			Name:  "pod-id",
+			Value: "",
+			Usage: "the pod identifier",
+		},
+	},
+	Action: func(context *cli.Context) error {
+		return checkContainerArgs(context, pauseContainer)
+	},
+}
+
+var resumeContainerCommand = cli.Command{
+	Name:  "resume",
+	Usage: "resume a paused container",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "id",
+			Value: "",
+			Usage: "the container identifier",
+		},
+		cli.StringFlag{
+			Name:  "pod-id",
+			Value: "",
+			Usage: "the pod identifier",
+		},
+	},
+	Action: func(context *cli.Context) error {
+		return checkContainerArgs(context, resumeContainer)
+	},
+}
+
 var enterContainerCommand = cli.Command{
 	Name:  "enter",
 	Usage: "enter an existing container",
@@ -923,6 +1037,8 @@ func main() {
 				startPodCommand,
 				stopPodCommand,
 				statusPodCommand,
+				pausePodCommand,
+				resumePodCommand,
 			},
 		},
 		{
@@ -935,6 +1051,8 @@ func main() {
 				stopContainerCommand,
 				enterContainerCommand,
 				statusContainerCommand,
+				pauseContainerCommand,
+				resumeContainerCommand,
 			},
 		},
 	}

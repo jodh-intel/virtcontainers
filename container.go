@@ -481,8 +481,8 @@ func (c *Container) kill(signal syscall.Signal, all bool) error {
 		return err
 	}
 
-	if state.State != StateRunning {
-		return fmt.Errorf("Container not running, impossible to signal the container")
+	if state.State != StateRunning && state.State != StatePaused {
+		return fmt.Errorf("Container not running or pause, impossible to signal the container")
 	}
 
 	if _, _, err := c.pod.proxy.connect(*(c.pod), false); err != nil {
@@ -496,6 +496,24 @@ func (c *Container) kill(signal syscall.Signal, all bool) error {
 	}
 
 	return nil
+}
+
+func (c *Container) pause() error {
+	err := c.kill(syscall.SIGSTOP, true)
+	if err != nil {
+		return err
+	}
+
+	return c.setContainerState(StatePaused)
+}
+
+func (c *Container) resume() error {
+	err := c.kill(syscall.SIGCONT, true)
+	if err != nil {
+		return err
+	}
+
+	return c.setContainerState(StateRunning)
 }
 
 func (c *Container) createShimProcess(token, url, console string) (*Process, error) {

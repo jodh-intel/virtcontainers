@@ -47,8 +47,14 @@ const (
 	// StateRunning represents a pod/container that's currently running.
 	StateRunning stateString = "running"
 
+	// StatePaused represents a pod/container that has been paused.
+	StatePaused stateString = "paused"
+
 	// StateStopped represents a pod/container that has been stopped.
 	StateStopped stateString = "stopped"
+
+	// StatePaused represents a pod/container that has been deleted.
+	StateDeleted stateString = "deleted"
 )
 
 // State is a pod state structure.
@@ -59,7 +65,7 @@ type State struct {
 
 // valid checks that the pod state is valid.
 func (state *State) valid() bool {
-	for _, validState := range []stateString{StateReady, StateRunning, StateStopped} {
+	for _, validState := range []stateString{StateReady, StateRunning, StatePaused, StateStopped} {
 		if state.State == validState {
 			return true
 		}
@@ -82,7 +88,12 @@ func (state *State) validTransition(oldState stateString, newState stateString) 
 		}
 
 	case StateRunning:
-		if newState == StateStopped {
+		if newState == StatePaused || newState == StateStopped {
+			return nil
+		}
+
+	case StatePaused:
+		if newState == StateRunning || newState == StateStopped {
 			return nil
 		}
 
@@ -350,7 +361,7 @@ func unlockPod(lockFile *os.File) error {
 }
 
 // Pod is composed of a set of containers and a runtime environment.
-// A Pod can be created, deleted, started, stopped, listed, entered, paused and restored.
+// A Pod can be created, deleted, started, paused, stopped, listed, entered, paused and restored.
 type Pod struct {
 	id string
 
@@ -579,8 +590,8 @@ func (p *Pod) delete() error {
 		return err
 	}
 
-	if state.State != StateReady && state.State != StateStopped {
-		return fmt.Errorf("Pod not ready or stopped, impossible to delete")
+	if state.State != StateReady && state.State != StatePaused && state.State != StateStopped {
+		return fmt.Errorf("Pod not ready, paused or stopped, impossible to delete")
 	}
 
 	err = p.storage.deletePodResources(p.id, nil)
@@ -597,7 +608,7 @@ func (p *Pod) startCheckStates() error {
 		return err
 	}
 
-	err = state.validTransition(StateReady, StateRunning)
+	err = state.validTransition(state.State, StateRunning)
 	if err != nil {
 		err = state.validTransition(StateStopped, StateRunning)
 		if err != nil {
@@ -733,7 +744,7 @@ func (p *Pod) stopCheckStates() error {
 		return err
 	}
 
-	err = state.validTransition(StateRunning, StateStopped)
+	err = state.validTransition(state.State, StateStopped)
 	if err != nil {
 		return err
 	}
@@ -748,6 +759,43 @@ func (p *Pod) stopSetStates() error {
 	}
 
 	p.state.State = StateStopped
+	err = p.setPodState(p.state)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Pod) pauseSetStates() error {
+	state := StatePaused
+	err := p.setContainersState(state)
+	if err != nil {
+		return err
+	}
+
+	p.state.State = state
+	err = p.setPodState(p.state)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Pod) resumeSetStates() error {
+	state := StateRunning
+
+	// BUG: the container might have been paused prior to the pod
+	// BUG: being paused!
+	// BUG:
+	// BUG: We need to store the old container state somewhere.
+	err := p.setContainersState(state)
+	if err != nil {
+		return err
+	}
+
+	p.state.State = state
 	err = p.setPodState(p.state)
 	if err != nil {
 		return err
@@ -794,6 +842,30 @@ func (p *Pod) stop() error {
 	}
 
 	if err := p.stopSetStates(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Pod) pause() error {
+	if err := p.hypervisor.pausePod(); err != nil {
+		return err
+	}
+
+	if err := p.pauseSetStates(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Pod) resume() error {
+	if err := p.hypervisor.resumePod(); err != nil {
+		return err
+	}
+
+	if err := p.resumeSetStates(); err != nil {
 		return err
 	}
 
