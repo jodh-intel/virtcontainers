@@ -264,9 +264,9 @@ type Cmd struct {
 	Envs    []EnvVar
 	WorkDir string
 
-	User                string
-	PrimaryGroup        string
-	SupplementaryGroups []string
+	User                uint32
+	PrimaryGroup        uint32
+	SupplementaryGroups []uint32
 
 	Interactive bool
 	Console     string

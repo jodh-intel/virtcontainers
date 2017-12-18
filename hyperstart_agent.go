@@ -112,14 +112,20 @@ func (h *hyper) buildHyperContainerProcess(cmd Cmd) (*hyperstart.Process, error)
 		envVars = append(envVars, envVar)
 	}
 
+	var groups []string
+
+	for _, g := range cmd.SupplementaryGroups {
+		groups = append(groups, fmt.Sprintf("%d", g))
+	}
+
 	process := &hyperstart.Process{
 		Terminal:         cmd.Interactive,
 		Args:             cmd.Args,
 		Envs:             envVars,
 		Workdir:          cmd.WorkDir,
-		User:             cmd.User,
-		Group:            cmd.PrimaryGroup,
-		AdditionalGroups: cmd.SupplementaryGroups,
+		User:             fmt.Sprintf("%d", cmd.User),
+		Group:            fmt.Sprintf("%d", cmd.PrimaryGroup),
+		AdditionalGroups: groups,
 	}
 
 	return process, nil

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	vc "github.com/containers/virtcontainers"
@@ -476,19 +475,15 @@ func ContainerConfig(ocispec CompatOCISpec, bundlePath, cid, console string, det
 	ociLog.Debugf("container rootfs: %s", rootfs)
 
 	cmd := vc.Cmd{
-		Args:         ocispec.Process.Args,
-		Envs:         cmdEnvs(ocispec, []vc.EnvVar{}),
-		WorkDir:      ocispec.Process.Cwd,
-		User:         strconv.FormatUint(uint64(ocispec.Process.User.UID), 10),
-		PrimaryGroup: strconv.FormatUint(uint64(ocispec.Process.User.GID), 10),
-		Interactive:  ocispec.Process.Terminal,
-		Console:      console,
-		Detach:       detach,
-	}
-
-	cmd.SupplementaryGroups = []string{}
-	for _, gid := range ocispec.Process.User.AdditionalGids {
-		cmd.SupplementaryGroups = append(cmd.SupplementaryGroups, strconv.FormatUint(uint64(gid), 10))
+		Args:                ocispec.Process.Args,
+		Envs:                cmdEnvs(ocispec, []vc.EnvVar{}),
+		WorkDir:             ocispec.Process.Cwd,
+		User:                ocispec.Process.User.UID,
+		PrimaryGroup:        ocispec.Process.User.GID,
+		SupplementaryGroups: ocispec.Process.User.AdditionalGids,
+		Interactive:         ocispec.Process.Terminal,
+		Console:             console,
+		Detach:              detach,
 	}
 
 	deviceInfos, err := containerDeviceInfos(ocispec)

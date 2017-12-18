@@ -88,9 +88,9 @@ func TestMinimalPodConfig(t *testing.T) {
 			},
 		},
 		WorkDir:             "/",
-		User:                "0",
-		PrimaryGroup:        "0",
-		SupplementaryGroups: []string{"10", "29"},
+		User:                0,
+		PrimaryGroup:        0,
+		SupplementaryGroups: []uint32{10, 29},
 		Interactive:         true,
 		Console:             consolePath,
 	}
